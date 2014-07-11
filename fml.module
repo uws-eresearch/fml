@@ -1,0 +1,128 @@
+<?php
+
+
+/**
+ * Implements hook_element_info()
+ */
+function fml_element_info(){
+	return array(
+		'fml' => array(
+			'#input' => TRUE,
+			'#tree' => TRUE,
+			'#process' => array('fml_element_process_callback'),
+			//'#element_validate' => array('fml_element_validate'),
+			//'#theme' => array('fml'),
+			'#theme_wrappers' => array('form_element'),
+		),
+	);
+}
+
+/**
+ * Process callback. Generates form elements for fml element
+ */
+function fml_element_process_callback($element, &$form_state){
+	ctools_include('ajax');
+	ctools_include('modal');
+	$element['category'] = array(
+		'#type' => 'select',
+		'#title' => t('Type'),
+		'#options' => array(t('Person'), t('Subject'), t('Equipment')),
+	);
+	
+	$element['familyname'] = array(
+		'#type' => 'textfield',
+		'#title' => t('Family Name'),
+	);
+	
+	$element['givenname'] = array(
+		'#type' => 'textfield',
+		'#title' => t('Given Name'),
+	);
+	
+	$element['box'] = array(
+		'#type' => 'markup',
+		'#prefix' => '<div id="box">',
+		'#suffix' => '</div>',
+		'#markup' => '<h1>Initial markup for box</h1>',
+	);
+	
+	$element['search'] = array(
+		'#type' => 'button',
+		'#value' => t('Search'),
+		'#ajax' => array(
+				'callback' => 'search_ajax_callback',
+				'wrapper' => 'box',
+				//'progress' => array('type' => 'none'),
+		
+		),
+	);
+	
+	return $element;
+}
+
+function search_ajax_callback($form, $form_state){
+	
+	/*
+	ctools_modal_command_display($title, $html);
+	ctools_modal_render( 'Error', 'Error Message');
+	$family_name = $form_state['values']['search']['familyname'];
+	$element = $form['search']['box'];
+	$element['#markup'] = "Clicked search button";
+	return $element;*/
+	
+	$commands = array();
+	
+	$commands[] = ajax_command_replace('#box', '<h1>New markup for the box</h1>');
+	$commands[] = ajax_command_changed('#box');
+	$commands[] = ajax_command_prepend('#box', theme('status_messages'));
+	
+	$data = array(array('name' =>'lloyd', 'uri' => 'http://www.example.com/people/12345'),
+				  array('name' => 'peter', 'uri' => 'http://www.example.com/people/6789'));
+	$commands[] = ajax_command_invoke(NULL, 'myJavascriptFunction', array($data));
+	
+	return array('#type' => 'ajax', '#commands' => $commands);
+}
+
+function search_fml_now($form, $form_state){
+	
+	try{
+		//FML integration
+		$url = 'http://fml.data.ac.nz/fillmylist?entity_type=person&output=json&fname=Leahy&gname=Andrew&email=&orcid=&equipment=&institution=';
+		
+		// Now call the fml
+		$ch = curl_init();
+		curl_setopt($ch, CURLOPT_URL, $url);
+		curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
+		$content = curl_exec($ch);
+		$result = curl_getinfo($ch);
+		curl_close($ch);
+			
+		if(empty($content))
+		{
+			return array();
+		}
+		else {
+			$content_array = json_decode($content);
+			$results = $content_array->results;
+			return $results;
+		}
+	}
+	catch (Exception $e) {
+		header('HTTP/1.1 400 ' . $e->getMessage());
+	}
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
